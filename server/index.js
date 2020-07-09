@@ -7,11 +7,13 @@ const controller = new Controller();
 server.on('request', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', '*');
+  res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
   if (req.method === 'OPTIONS') {
     res.status = 200;
     res.end();
     return;
   }
+
   if (req.url === '/fileChunk/presence') {
     await controller.handleVerifyUpload(req, res);
     return;

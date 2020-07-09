@@ -366,37 +366,37 @@ export default {
 
         this.status = Status.uploading;
 
-        // const verifyRes = await this.verifyUpload(
-        //   tempFilesArr[i].name,
-        //   tempFilesArr[i].hash
-        // );
-        // if (verifyRes.data.presence) {
-        //   tempFilesArr[i].status = fileStatus.secondPass;
-        //   tempFilesArr[i].uploadProgress = 100;
-        //   this.isAllStatus();
-        // } else {
-        console.log('开始上传文件----》', tempFilesArr[i].name);
-        const getChunkStorage = this.getChunkStorage(tempFilesArr[i].hash);
-        tempFilesArr[i].fileHash = tempFilesArr[i].hash; // 文件的hash，合并时使用
-        tempFilesArr[i].chunkList = fileChunkList.map(({ file }, index) => ({
-          fileHash: tempFilesArr[i].hash,
-          fileName: tempFilesArr[i].name,
-          index,
-          hash: tempFilesArr[i].hash + '-' + index,
-          chunk: file,
-          size: file.size,
-          uploaded: getChunkStorage && getChunkStorage.includes(index), // 标识：是否已完成上传
-          progress:
+        const verifyRes = await this.verifyUpload(
+          tempFilesArr[i].name,
+          tempFilesArr[i].hash
+        );
+        if (verifyRes.data.presence) {
+          tempFilesArr[i].status = fileStatus.secondPass;
+          tempFilesArr[i].uploadProgress = 100;
+          this.isAllStatus();
+        } else {
+          console.log('开始上传文件----》', tempFilesArr[i].name);
+          const getChunkStorage = this.getChunkStorage(tempFilesArr[i].hash);
+          tempFilesArr[i].fileHash = tempFilesArr[i].hash; // 文件的hash，合并时使用
+          tempFilesArr[i].chunkList = fileChunkList.map(({ file }, index) => ({
+            fileHash: tempFilesArr[i].hash,
+            fileName: tempFilesArr[i].name,
+            index,
+            hash: tempFilesArr[i].hash + '-' + index,
+            chunk: file,
+            size: file.size,
+            uploaded: getChunkStorage && getChunkStorage.includes(index), // 标识：是否已完成上传
+            progress:
               getChunkStorage && getChunkStorage.includes(index) ? 100 : 0,
-          status:
+            status:
               getChunkStorage && getChunkStorage.includes(index)
                 ? 'success'
                 : 'wait' // 上传状态，用作进度状态显示
-        }));
+          }));
 
-        console.log('handleUpload ->  this.chunkData', tempFilesArr[i]);
-        await this.uploadChunks(this.tempFilesArr[i]);
-        // }
+          console.log('handleUpload ->  this.chunkData', tempFilesArr[i]);
+          await this.uploadChunks(this.tempFilesArr[i]);
+        }
       }
     },
     // 将切片传输给服务端
@@ -537,6 +537,7 @@ export default {
           timeout: 0
         })
         .then(res => {
+          console.log('mergeRequest -> res', res);
           // 清除storage
           if (res.data.code === 2000) {
             data.status = fileStatus.success;
@@ -545,7 +546,8 @@ export default {
             // 判断是否所有都成功上传
             this.isAllStatus();
           } else {
-            // 文件块数量不对，清除缓存
+            // 错误：如文件块数量不对。
+            // 清除缓存
             clearLocalStorage(data.fileHash);
             data.status = fileStatus.error;
             this.status = Status.wait;
@@ -590,7 +592,7 @@ export default {
           ...this.uploadArguments
         };
         instance
-          .get('fileChunk/presence', { params: obj })
+          .post('fileChunk/presence', obj)
           .then(res => {
             console.log('verifyUpload -> res', res);
             resolve(res.data);

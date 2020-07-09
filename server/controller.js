@@ -50,17 +50,12 @@ const resolvePost = (req) =>
     let chunk = '';
     req.on('data', (data) => {
       chunk += data;
+      console.log('chunk', chunk);
     });
     req.on('end', () => {
       resolve(JSON.parse(chunk));
     });
   });
-
-// 返回已经上传切片名
-const createUploadedList = async (fileHash) =>
-  fse.existsSync(path.resolve(UPLOAD_DIR, fileHash))
-    ? await fse.readdir(path.resolve(UPLOAD_DIR, fileHash))
-    : [];
 
 module.exports = class {
   // 合并切片
@@ -122,16 +117,29 @@ module.exports = class {
   }
   // 验证是否已上传/已上传切片下标
   async handleVerifyUpload(req, res) {
+    console.log('handleVerifyUpload -> req, res', req, res);
     const data = await resolvePost(req);
     const { md5, fileName } = data;
     const ext = extractExt(fileName);
     const filePath = path.resolve(UPLOAD_DIR, `${md5}${ext}`);
     if (fse.existsSync(filePath)) {
-      res.end(
-        JSON.stringify({
-          shouldUpload: false
-        })
-      );
+      return rendAjax(res, {
+        code: 2000,
+        message: '操作成功',
+        data: {
+          md5: md5,
+          presence: true
+        }
+      });
+    } else {
+      return rendAjax(res, {
+        code: 2000,
+        message: '操作成功',
+        data: {
+          md5: md5,
+          presence: false
+        }
+      });
     }
   }
 };
