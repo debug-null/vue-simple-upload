@@ -1,30 +1,34 @@
-# 前端大文件上传 + 断点续传解决方案
+# Upload - 断点续传组件
 
-重新演示上传需要删除 /target 中的文件，否则由于服务端保存了文件上传会直接成功
+## 启动
 
-示例文件： /public/WebStorm-2019.3.1.dmg(`非 mac 的朋友自行找测试文件-。-`)
+* npm run start
+* 后端访问端口：3000
 
+## Attribute
 
-前端
-* vue + element 界面展示
-* Blob#slice 实现文件切片
-* FileReader + spark-md5 + web-worker 生成文件 hash
-* xhr 发送 formData
+|     参数     |  类型  |      说明      | 默认 |                          备注                          |
+| :----------------: | :----: | :------------: | :--: | :----------------------------------------------------: |
+| headers  | Object  |    设置请求头    |      |  |
+| before-upload   | Function  |  上传文件前的钩子，返回false则停止上传 |  |  
+| accept | String |   接受上传的文件类型   |      |                                                   |
+| upload-arguments | Object |   上传文件时携带的参数   |      |                                                 |
+| with-credentials | Boolean |   是否传递Cookie   |  false    |                                                 |
+| limit | Number |   最大允许上传个数   |  0    |         0为不限制                                        |
+| on-exceed | Function |   文件超出个数限制时的钩子   |     |                                            |
+| multiple | Boolean |   是否为多选模式   |   true  |                                            |
+| base-url | String |   由于本组件为内置的AXIOS，若你需要走代理，可以直接在这里配置你的基础路径   |     |        |
+| chunk-size | Number |   每个切片的大小   |  10M   |        |
+| threads | Number |   请求的并发数   |  3   |        | 并发数越高，对服务器的性能要求越高，尽可能用默认值即可|
+| chunk-retry | Number |   错误重试次数   |  3   |        | 分片请求的错误重试次数|
 
-服务端
-* nodejs
-* multiparty 处理 formData
+## Slot
 
-# start
+|     方法名     |                         说明                         | 参数 | 备注 |
+| :------------: | :--------------------------------------------------: | :--: | :--: |
+| header | 按钮区域 |   |  无  |
+| tip | 提示说明文字 |   |  无  |
 
-```
-npm install
-```
+## 后端接口：按文档实现即可
 
-```
-npm run start
-```
-
-# 相关博客
-[字节跳动面试官：请你实现一个大文件上传和断点续传](https://juejin.im/post/5dff8a26e51d4558105420ed
-)
+> 后端文档地址： <https://docs.apipost.cn/view/0e19f16d4470ed6b#287746>
