@@ -90,15 +90,26 @@ export default {
     }
   },
   methods: {
-    // 上传文件之前的钩子
     beforeUpload(file) {
+      console.log('beforeAvatarUpload -> file', file);
       if (this.acceptsObj[this.uploadType].indexOf(file.type) === -1) {
-        this.$message.error(
-          '只能上传' + this.acceptDesc[this.uploadType]
-        );
+        this.$notify({
+          message: '只能上传' + this.acceptDesc[this.uploadType],
+          type: 'warning',
+          offset: 50
+        });
         return false;
       }
-
+      if (!file.size) {
+        setTimeout(() => {
+          this.$notify({
+            message: '不能上传大小为0的文件',
+            type: 'warning',
+            offset: 50
+          });
+        }, 500);
+        return false;
+      }
       return true;
     },
     // 文件个数限制钩子
