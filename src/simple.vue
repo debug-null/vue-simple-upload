@@ -24,13 +24,13 @@
       </div>
     </div>
     <div class="file-list">
-      <el-collapse v-if="tempFilesArr.length" accordion>
-        <el-collapse-item v-for="(item, index) in tempFilesArr" :key="index">
+      <el-collapse v-if="uploadFiles.length" accordion>
+        <el-collapse-item v-for="(item, index) in uploadFiles" :key="index">
           <template slot="title">
             <div class="progress-box">
               <div class="list-item">
                 <div class="item-name">
-                  <span>名称：{{ item.name }}</span>
+                  <span>{{ index + 1 }}：名称：{{ item.name }}</span>
                 </div>
                 <div class="item-size">大小：{{ item.size | transformByte }}</div>
                 <div v-if="item.hashProgress !== 100" class="item-progress">
@@ -204,10 +204,8 @@ export default {
     }
   },
   data: () => ({
-    container: {
-      files: null
-    },
-    tempFilesArr: [], // 存储files信息
+    uploadFiles: [],
+    worker: null,
     cancels: [], // 存储要取消的请求
     tempThreads: 3,
     // 默认状态
@@ -218,7 +216,7 @@ export default {
       return ![Status.wait, Status.done].includes(this.status);
     },
     uploadDisabled() {
-      return !this.tempFilesArr.length || [Status.pause, Status.done, Status.uploading, Status.hash].includes(this.status);
+      return !this.uploadFiles.length || [Status.pause, Status.done, Status.uploading, Status.hash].includes(this.status);
     },
     pauseDisabled() {
       return [Status.hash, Status.wait, Status.done, Status.pause].includes(this.status);
@@ -227,7 +225,7 @@ export default {
       return ![Status.pause].includes(this.status);
     },
     clearDisabled() {
-      return !this.tempFilesArr.length;
+      return !this.uploadFiles.length;
     },
     fileStatuIcon(status) {
       return function (status) {
@@ -260,69 +258,61 @@ export default {
       const files = e.target.files;
       console.log('handleFileChange -> file', files);
       if (!files) return;
-      Object.assign(this.$data, this.$options.data()); // 重置data所有数据
 
       fileIndex = 0; // 重置文件下标
-      this.container.files = files;
+      console.log('handleFileChange -> this.uploadFiles', this.uploadFiles);
       // 判断文件选择的个数
-      if (this.limit && this.container.files.length > this.limit) {
+      if (this.limit && files.length > this.limit) {
         this.onExceed && this.onExceed(files);
         return;
       }
 
-      // 因filelist不可编辑，故拷贝filelist 对象
-      for (const key in this.container.files) {
-        if (this.container.files.hasOwnProperty(key)) {
-          const file = this.container.files[key];
+      this.status = Status.wait;
 
-          if (this.beforeUpload) {
-            const before = this.beforeUpload(file);
-            console.log('handleFileChange -> before', before);
-            if (before) {
-              this.pushTempFile(file);
-            }
-          }
+      const postFiles = Array.prototype.slice.call(files);
+      console.log('handleFileChange -> postFiles', postFiles);
+      postFiles.forEach((item) => {
+        this.handleStart(item);
+      });
+    },
+    handleStart(rawFile) {
+      // 初始化部分自定义属性
+      rawFile.status = fileStatus.wait;
+      rawFile.chunkList = [];
+      rawFile.uploadProgress = 0;
+      rawFile.hashProgress = 0;
 
-          if (!this.beforeUpload) {
-            this.pushTempFile(file);
-          }
+      if (this.beforeUpload) {
+        const before = this.beforeUpload(rawFile);
+        if (before) {
+          this.uploadFiles.push(rawFile);
         }
       }
-    },
-    pushTempFile(file) {
-      // 额外的初始值
-      const obj = { status: fileStatus.wait, chunkList: [], uploadProgress: 0, hashProgress: 0 };
-      for (const k in file) {
-        obj[k] = file[k];
+
+      if (!this.beforeUpload) {
+        this.uploadFiles.push(rawFile);
       }
-      console.log('pushTempFile -> obj', obj);
-      this.tempFilesArr.push(obj);
     },
     async handleUpload() {
-      console.log('handleUpload -> this.container', this.container);
-      console.log('临时文件列表-1：handleUpload -> tempFilesArr', tempFilesArr);
-      if (!this.container.files) return;
+      console.log('handleUpload -> this.uploadFiles', this.uploadFiles);
+      if (!this.uploadFiles) return;
       this.status = Status.uploading;
-      const filesArr = this.container.files;
-      var tempFilesArr = this.tempFilesArr;
-      console.log('原文件列表：handleUpload -> filesArr', filesArr);
-      console.log('临时文件列表：handleUpload -> tempFilesArr', tempFilesArr);
+      const filesArr = this.uploadFiles;
 
-      for (let i = 0; i < tempFilesArr.length; i++) {
+      for (let i = 0; i < filesArr.length; i++) {
         fileIndex = i;
-        if (tempFilesArr[i].status === 'success') {
+        if (filesArr[i].status === 'success') {
           console.log('跳过已上传成功');
           continue;
         }
 
-        tempFilesArr[i].status = fileStatus.wait;
+        filesArr[i].status = fileStatus.wait;
         const fileChunkList = this.createFileChunk(filesArr[i]);
-        console.log('handleUpload -> !tempFilesArr[i]', tempFilesArr[i]);
         // 若不是恢复，再进行hash计算
-        if (tempFilesArr[i].status !== 'resume') {
+        if (filesArr[i].status !== 'resume') {
           this.status = Status.hash;
           // hash校验，是否为秒传
-          tempFilesArr[i].hash = await this.calculateHash(fileChunkList);
+          filesArr[i].hash = await this.calculateHash(fileChunkList);
 
           // 若清空或者状态为等待，则跳出循环
           if (this.status === Status.wait) {
@@ -330,25 +320,25 @@ export default {
             break;
           }
 
-          console.log('handleUpload -> hash', tempFilesArr[i].hash);
+          console.log('handleUpload -> hash', filesArr[i].hash);
         }
 
         this.status = Status.uploading;
 
-        const verifyRes = await this.verifyUpload(tempFilesArr[i].name, tempFilesArr[i].hash);
+        const verifyRes = await this.verifyUpload(filesArr[i].name, filesArr[i].hash);
         if (verifyRes.data.presence) {
-          tempFilesArr[i].status = fileStatus.secondPass;
-          tempFilesArr[i].uploadProgress = 100;
+          filesArr[i].status = fileStatus.secondPass;
+          filesArr[i].uploadProgress = 100;
           this.isAllStatus();
         } else {
-          console.log('开始上传文件----》', tempFilesArr[i].name);
-          const getChunkStorage = this.getChunkStorage(tempFilesArr[i].hash);
-          tempFilesArr[i].fileHash = tempFilesArr[i].hash; // 文件的hash，合并时使用
-          tempFilesArr[i].chunkList = fileChunkList.map(({ file }, index) => ({
-            fileHash: tempFilesArr[i].hash,
-            fileName: tempFilesArr[i].name,
+          console.log('开始上传文件----》', filesArr[i].name);
+          const getChunkStorage = this.getChunkStorage(filesArr[i].hash);
+          filesArr[i].fileHash = filesArr[i].hash; // 文件的hash，合并时使用
+          filesArr[i].chunkList = fileChunkList.map(({ file }, index) => ({
+            fileHash: filesArr[i].hash,
+            fileName: filesArr[i].name,
             index,
-            hash: tempFilesArr[i].hash + '-' + index,
+            hash: filesArr[i].hash + '-' + index,
             chunk: file,
             size: file.size,
             uploaded: getChunkStorage && getChunkStorage.includes(index), // 标识：是否已完成上传
@@ -356,13 +346,16 @@ export default {
             status: getChunkStorage && getChunkStorage.includes(index) ? 'success' : 'wait' // 上传状态，用作进度状态显示
           }));
 
-          console.log('handleUpload ->  this.chunkData', tempFilesArr[i]);
-          await this.uploadChunks(this.tempFilesArr[i]);
+          this.$set(filesArr, i, filesArr[i]);
+
+          console.log('handleUpload ->  this.chunkData', filesArr[i]);
+          await this.uploadChunks(filesArr[i]);
         }
       }
     },
     // 将切片传输给服务端
     async uploadChunks(data) {
+      console.log('uploadChunks -> data', data);
       var chunkData = data.chunkList;
       return new Promise(async (resolve, reject) => {
         const requestDataList = chunkData
@@ -442,8 +435,9 @@ export default {
                 handler();
               })
               .catch((e) => {
-                // 若暂停，则禁止重试
-                if (this.status === Status.pause) return;
+                // 若状态为暂停或等待，则禁止重试
+                console.log('handler -> this.status', this.status);
+                if ([Status.pause, Status.wait].includes(this.status)) return;
 
                 console.warn('出现错误', e);
                 console.log('handler -> retryArr', retryArr);
@@ -533,15 +527,16 @@ export default {
         });
         count += size;
       }
+      console.log('createFileChunk -> fileChunkList', fileChunkList);
       return fileChunkList;
     },
 
     // 暂停上传
     handlePause() {
       this.status = Status.pause;
-      if (this.tempFilesArr.length) {
-        console.log('handlePause -> this.tempFilesArr[fileIndex]', this.tempFilesArr[fileIndex]);
-        this.tempFilesArr[fileIndex].status = fileStatus.pause;
+      if (this.uploadFiles.length) {
+        console.log('handlePause -> this.uploadFiles[fileIndex]', this.uploadFiles[fileIndex]);
+        this.uploadFiles[fileIndex].status = fileStatus.pause;
       }
       while (this.cancels.length > 0) {
         this.cancels.pop()('取消请求');
@@ -550,8 +545,8 @@ export default {
     // 恢复上传
     handleResume() {
       this.status = Status.uploading;
-      console.log('handleResume -> this.tempFilesArr[fileIndex]', this.tempFilesArr[fileIndex]);
-      this.tempFilesArr[fileIndex].status = fileStatus.resume;
+      console.log('handleResume -> this.uploadFiles[fileIndex]', this.uploadFiles[fileIndex]);
+      this.uploadFiles[fileIndex].status = fileStatus.resume;
       this.handleUpload();
     },
     // 文件上传之前的校验： 校验文件是否已存在
@@ -563,7 +558,7 @@ export default {
           ...this.uploadArguments
         };
         instance
-          .post('fileChunk/presence', obj)
+          .get('fileChunk/presence', { params: obj })
           .then((res) => {
             console.log('verifyUpload -> res', res);
             resolve(res.data);
@@ -577,12 +572,13 @@ export default {
     calculateHash(fileChunkList) {
       console.log('calculateHash -> fileChunkList', fileChunkList);
       return new Promise((resolve) => {
-        this.container.worker = new Worker('./hash.js');
-        this.container.worker.postMessage({ fileChunkList });
-        this.container.worker.onmessage = (e) => {
+        this.worker = new Worker('./hash/md5.js');
+        this.worker.postMessage({ fileChunkList });
+        this.worker.onmessage = (e) => {
           const { percentage, hash } = e.data;
-          if (this.tempFilesArr[fileIndex]) {
-            this.tempFilesArr[fileIndex].hashProgress = Number(percentage.toFixed(0));
+          if (this.uploadFiles[fileIndex]) {
+            this.uploadFiles[fileIndex].hashProgress = Number(percentage.toFixed(0));
+            this.$set(this.uploadFiles, fileIndex, this.uploadFiles[fileIndex]);
           }
 
           if (hash) {
@@ -593,6 +589,7 @@ export default {
     },
     // 切片上传进度
     createProgresshandler(item) {
+      console.log('createProgresshandler -> item', item);
       return (p) => {
         item.progress = parseInt(String((p.loaded / p.total) * 100));
         this.fileProgress();
@@ -600,11 +597,13 @@ export default {
     },
     // 文件总进度
     fileProgress() {
-      const currentFile = this.tempFilesArr[fileIndex];
+      const currentFile = this.uploadFiles[fileIndex];
       if (currentFile) {
         const uploadProgress = currentFile.chunkList.map((item) => item.size * item.progress).reduce((acc, cur) => acc + cur);
         const currentFileProgress = parseInt((uploadProgress / currentFile.size).toFixed(2));
         currentFile.uploadProgress = currentFileProgress;
+
+        this.$set(this.uploadFiles, fileIndex, currentFile);
       }
     },
     // 存储已上传完成的切片下标
@@ -645,16 +644,17 @@ export default {
     // 清空文件
     clearFiles() {
       console.log('清空文件');
-      this.container.files = null;
-      this.tempFilesArr = [];
+      fileIndex = 0;
       this.handlePause();
 
-      this.container.worker && this.container.worker.terminate(); // 中断worker
+      this.worker && this.worker.terminate(); // 中断worker
       this.status = Status.wait;
+
+      Object.assign(this.$data, this.$options.data()); // 重置data所有数据
     },
     // 判断是否所有的状态
     isAllStatus() {
-      const isAllSuccess = this.tempFilesArr.every((item) => ['success', 'secondPass'].includes(item.status));
+      const isAllSuccess = this.uploadFiles.every((item) => ['success', 'secondPass'].includes(item.status));
       console.log('mergeRequest -> isAllSuccess', isAllSuccess);
       if (isAllSuccess) {
         this.status = Status.done;
