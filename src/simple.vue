@@ -301,8 +301,8 @@ export default {
 
       for (let i = 0; i < filesArr.length; i++) {
         fileIndex = i;
-        if (filesArr[i].status === 'success') {
-          console.log('跳过已上传成功');
+        if (['secondPass', 'success'].includes(filesArr[i].status)) {
+          console.log('跳过已上传成功或已秒传的');
           continue;
         }
 
