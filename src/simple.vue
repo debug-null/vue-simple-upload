@@ -280,6 +280,7 @@ export default {
       rawFile.status = fileStatus.wait;
       rawFile.chunkList = [];
       rawFile.uploadProgress = 0;
+      rawFile.fakeUploadProgress = 0; // 假进度条，处理恢复上传后，进度条后移的问题
       rawFile.hashProgress = 0;
 
       if (this.beforeUpload) {
@@ -306,8 +307,8 @@ export default {
           continue;
         }
 
-        filesArr[i].status = fileStatus.wait;
         const fileChunkList = this.createFileChunk(filesArr[i]);
+
         // 若不是恢复，再进行hash计算
         if (filesArr[i].status !== 'resume') {
           this.status = Status.hash;
@@ -332,6 +333,8 @@ export default {
           this.isAllStatus();
         } else {
           console.log('开始上传文件----》', filesArr[i].name);
+          filesArr[i].status = fileStatus.uploading;
+
           const getChunkStorage = this.getChunkStorage(filesArr[i].hash);
           filesArr[i].fileHash = filesArr[i].hash; // 文件的hash，合并时使用
           filesArr[i].chunkList = fileChunkList.map(({ file }, index) => ({
@@ -535,8 +538,11 @@ export default {
     handlePause() {
       this.status = Status.pause;
       if (this.uploadFiles.length) {
-        console.log('handlePause -> this.uploadFiles[fileIndex]', this.uploadFiles[fileIndex]);
-        this.uploadFiles[fileIndex].status = fileStatus.pause;
+        const currentFile = this.uploadFiles[fileIndex];
+        currentFile.status = fileStatus.pause;
+        // 将当前进度赋值给假进度条
+        currentFile.fakeUploadProgress = currentFile.uploadProgress;
+        console.log('handlePause -> currentFile', currentFile);
       }
       while (this.cancels.length > 0) {
         this.cancels.pop()('取消请求');
@@ -601,9 +607,15 @@ export default {
       if (currentFile) {
         const uploadProgress = currentFile.chunkList.map((item) => item.size * item.progress).reduce((acc, cur) => acc + cur);
         const currentFileProgress = parseInt((uploadProgress / currentFile.size).toFixed(2));
-        currentFile.uploadProgress = currentFileProgress;
 
-        this.$set(this.uploadFiles, fileIndex, currentFile);
+        // 真假进度条处理--处理进度条后移
+        if (!currentFile.fakeUploadProgress) {
+          currentFile.uploadProgress = currentFileProgress;
+          this.$set(this.uploadFiles, fileIndex, currentFile);
+        } else if (currentFileProgress > currentFile.fakeUploadProgress) {
+          currentFile.uploadProgress = currentFileProgress;
+          this.$set(this.uploadFiles, fileIndex, currentFile);
+        }
       }
     },
     // 存储已上传完成的切片下标
