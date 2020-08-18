@@ -14,7 +14,7 @@ server.on('request', async (req, res) => {
     return;
   }
 
-  if (req.url === '/fileChunk/presence') {
+  if (req.url.indexOf('/fileChunk/presence') !== -1) {
     await controller.handleVerifyUpload(req, res);
     return;
   }

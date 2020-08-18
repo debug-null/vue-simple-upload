@@ -1,6 +1,7 @@
 const multiparty = require('multiparty');
 const path = require('path');
 const fse = require('fs-extra');
+const url = require('url');
 
 const extractExt = (filename) =>
   filename.slice(filename.lastIndexOf('.'), filename.length); // 提取后缀名
@@ -117,9 +118,8 @@ module.exports = class {
   }
   // 验证是否已上传/已上传切片下标
   async handleVerifyUpload(req, res) {
-    console.log('handleVerifyUpload -> req, res', req, res);
-    const data = await resolvePost(req);
-    const { md5, fileName } = data;
+    var data = url.parse(req.url, true);
+    const { md5, fileName } = data.query;
     const ext = extractExt(fileName);
     const filePath = path.resolve(UPLOAD_DIR, `${md5}${ext}`);
     if (fse.existsSync(filePath)) {

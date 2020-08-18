@@ -578,7 +578,7 @@ export default {
     calculateHash(fileChunkList) {
       console.log('calculateHash -> fileChunkList', fileChunkList);
       return new Promise((resolve) => {
-        this.worker = new Worker('./hash/md5.js');
+        this.worker = new Worker('./hash.js');
         this.worker.postMessage({ fileChunkList });
         this.worker.onmessage = (e) => {
           const { percentage, hash } = e.data;
