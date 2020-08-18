@@ -110,7 +110,7 @@ export default {
         }, 500);
         return false;
       }
-      return true;
+      return this.propertyRestrictions(file);
     },
     // 文件个数限制钩子
     fileLimitFn(files) {
@@ -124,6 +124,42 @@ export default {
     },
     success() {
       // this.$message('上传成功');
+    },
+    // 属性限制
+    async propertyRestrictions(file) {
+      return new Promise(async (resolve, reject) => {
+        if (this.uploadType === 'image') {
+          const isVerifyResolution = await this.verifyResolution(file);
+          console.log('propertyRestrictions -> isVerifyResolution', isVerifyResolution);
+          if (!isVerifyResolution) {
+            this.$message(this.$t('messageTips.notAbove4k'));
+            reject();
+          }
+        }
+        resolve(true);
+      });
+    },
+    // 分辨率校验
+    verifyResolution(file, maxWidth = 3840, maxHeight = 2160) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function () {
+          if (reader.readyState === 2) {
+            const img = new Image();
+            img.src = reader.result;
+            img.onload = function () {
+              const width = this.width;
+              const height = this.height;
+              const bool = width > maxWidth || height > maxHeight;
+              if (bool) {
+                resolve(false);
+              }
+              resolve(true);
+            };
+          }
+        };
+      });
     }
   }
 };

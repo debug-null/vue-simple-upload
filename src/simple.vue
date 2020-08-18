@@ -285,8 +285,10 @@ export default {
 
       if (this.beforeUpload) {
         const before = this.beforeUpload(rawFile);
-        if (before) {
-          this.uploadFiles.push(rawFile);
+        if (before && before.then) {
+          before.then((res) => {
+            this.uploadFiles.push(rawFile);
+          });
         }
       }
 
@@ -302,8 +304,8 @@ export default {
 
       for (let i = 0; i < filesArr.length; i++) {
         fileIndex = i;
-        if (['secondPass', 'success'].includes(filesArr[i].status)) {
-          console.log('跳过已上传成功或已秒传的');
+        if (['secondPass', 'success', 'error'].includes(filesArr[i].status)) {
+          console.log('跳过已上传成功或已秒传的或失败的');
           continue;
         }
 
@@ -500,6 +502,7 @@ export default {
             // 清除storage
             if (res.data.code === 2000) {
               data.status = fileStatus.success;
+              console.log('mergeRequest -> data', data);
               clearLocalStorage(data.fileHash);
               // this.$message.success('上传成功');
               // 判断是否所有都成功上传
@@ -664,9 +667,9 @@ export default {
 
       Object.assign(this.$data, this.$options.data()); // 重置data所有数据
     },
-    // 判断是否所有的状态
+    // 判断是否都已完成上传
     isAllStatus() {
-      const isAllSuccess = this.uploadFiles.every((item) => ['success', 'secondPass'].includes(item.status));
+      const isAllSuccess = this.uploadFiles.every((item) => ['success', 'secondPass', 'error'].includes(item.status));
       console.log('mergeRequest -> isAllSuccess', isAllSuccess);
       if (isAllSuccess) {
         this.status = Status.done;
