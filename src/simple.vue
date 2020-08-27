@@ -329,11 +329,14 @@ export default {
         this.status = Status.uploading;
 
         const verifyRes = await this.verifyUpload(filesArr[i].name, filesArr[i].hash);
+        console.log('进入verifyRes', verifyRes);
         if (verifyRes.data.presence) {
+          console.log('进入1', verifyRes);
           filesArr[i].status = fileStatus.secondPass;
           filesArr[i].uploadProgress = 100;
           this.isAllStatus();
         } else {
+          console.log('进入2', verifyRes);
           console.log('开始上传文件----》', filesArr[i].name);
           filesArr[i].status = fileStatus.uploading;
 
@@ -363,16 +366,14 @@ export default {
       console.log('uploadChunks -> data', data);
       var chunkData = data.chunkList;
       return new Promise(async (resolve, reject) => {
-        const requestDataList = chunkData
-          .filter(({ uploaded }) => !uploaded)
-          .map(({ fileHash, chunk, fileName, index }) => {
-            const formData = new FormData();
-            formData.append('md5', fileHash);
-            formData.append('file', chunk);
-            formData.append('fileName', index); // 文件名使用切片的下标
-
-            return { formData, index, fileName };
-          });
+        const requestDataList = chunkData.filter(({ uploaded }) => !uploaded).map(({ fileHash, chunk, fileName, index }) => {
+          const formData = new FormData();
+          formData.append('md5', fileHash);
+          formData.append('file', chunk);
+          formData.append('fileName', index); // 文件名使用切片的下标
+          console.log('sendRequest2222====', formData, index, fileName);
+          return { formData, index, fileName };
+        });
 
         console.log('uploadChunks -> requestDataList', requestDataList);
 
@@ -503,6 +504,7 @@ export default {
             if (res.data.code === 2000) {
               data.status = fileStatus.success;
               console.log('mergeRequest -> data', data);
+              console.log('上传的chunk', localStorage.getItem(data.fileHash));
               clearLocalStorage(data.fileHash);
               // this.$message.success('上传成功');
               // 判断是否所有都成功上传
