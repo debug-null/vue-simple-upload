@@ -329,14 +329,12 @@ export default {
         this.status = Status.uploading;
 
         const verifyRes = await this.verifyUpload(filesArr[i].name, filesArr[i].hash);
-        console.log('进入verifyRes', verifyRes);
         if (verifyRes.data.presence) {
           console.log('进入1', verifyRes);
           filesArr[i].status = fileStatus.secondPass;
           filesArr[i].uploadProgress = 100;
           this.isAllStatus();
         } else {
-          console.log('进入2', verifyRes);
           console.log('开始上传文件----》', filesArr[i].name);
           filesArr[i].status = fileStatus.uploading;
 
@@ -370,8 +368,7 @@ export default {
           const formData = new FormData();
           formData.append('md5', fileHash);
           formData.append('file', chunk);
-          formData.append('fileName', index); // 文件名使用切片的下标
-          console.log('sendRequest2222====', formData, index, fileName);
+          formData.append('chunkId', index); // 文件名使用切片的下标
           return { formData, index, fileName };
         });
 

@@ -78,7 +78,7 @@ export default {
       };
     },
     baseUrl() {
-      return 'http://localhost:3000';
+      return 'http://localhost:3000/';
     },
     uploadType() {
       return this.uploadArguments.type;
