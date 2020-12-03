@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "vue-cli-service serve",
-    "server":"node server/index.js",
+    "server": "node server/index.js",
     "lint:js": "eslint --fix",
     "lint": "eslint . --fix"
   },
