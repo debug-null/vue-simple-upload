@@ -30,19 +30,20 @@ const mergeFileChunk = async (filePath, fileHash, size) => {
   const chunkPaths = await fse.readdir(chunkDir);
   // 根据切片下标进行排序
   // 否则直接读取目录的获得的顺序可能会错乱
-  chunkPaths.sort((a, b) => a.split('-')[1] - b.split('-')[1]);
+  chunkPaths.sort((a, b) => Number(a) - Number(b));
   await Promise.all(
-    chunkPaths.map((chunkPath, index) =>
+    chunkPaths.map((chunkPaths, index) =>
       pipeStream(
-        path.resolve(chunkDir, chunkPath),
+        path.resolve(chunkDir, chunkPaths),
         // 指定位置创建可写流
         fse.createWriteStream(filePath, {
-          start: index * size,
-          end: (index + 1) * size
+          start: index * 5 * 10 * 1024 * 1024
+          // end: (index + 1) * size
         })
       )
     )
-  );
+  )
+  ;
   fse.rmdirSync(chunkDir); // 合并后删除保存切片的目录
 };
 
@@ -84,28 +85,28 @@ module.exports = class {
       }
       const [chunk] = files.file;
       const [hash] = fields.md5;
-      const [filename] = fields.fileName;
-      console.log('handleFileChunk -> filename', filename);
-      const filePath = path.resolve(UPLOAD_DIR, `${hash}`);
+      const [chunkId] = fields.chunkId;
+      console.log('handleFileChunk -> chunkId', chunkId);
       const chunkDir = path.resolve(UPLOAD_DIR, hash);
 
+      // 切片目录不存在，创建切片目录
+      if (!fse.existsSync(chunkDir)) {
+        await fse.mkdirs(chunkDir);
+      }
+
       // 文件存在直接返回
-      if (fse.existsSync(filePath)) {
+      if (fse.existsSync(path.resolve(chunkDir, chunkId))) {
         return rendAjax(res, {
           code: 2001,
           message: '文件已存在'
         });
       }
 
-      // 切片目录不存在，创建切片目录
-      if (!fse.existsSync(chunkDir)) {
-        await fse.mkdirs(chunkDir);
-      }
       // fs-extra 专用方法，类似 fs.rename 并且跨平台
       // fs-extra 的 rename 方法 windows 平台会有权限问题
       // https://github.com/meteor/meteor/issues/7852#issuecomment-255767835
       try {
-        await fse.move(chunk.path, path.resolve(chunkDir, filename));
+        await fse.move(chunk.path, path.resolve(chunkDir, chunkId));
       } catch (error) {
         console.log('handleFileChunk -> error', error);
       }

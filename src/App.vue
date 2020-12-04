@@ -48,6 +48,10 @@ export default {
       excel: [
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      ],
+      zip: [
+        'application/x-zip-compressed',
+        '.zip'
       ]
     },
     acceptDesc: {
@@ -55,11 +59,13 @@ export default {
       image: 'png,gif,jpeg,jpg,bmp',
       audio: 'mp3',
       ppt: 'ppt',
-      excel: 'xls,xlsx'
+      excel: 'xls,xlsx',
+      zip: 'zip,rar'
     },
     // 临时自测使用
     uploadArguments: {
-      type: 'video'
+      // type: 'video'
+      type: 'zip'
     },
     limit: 20,
     chunkSize: 50 * 1024 * 1024,
@@ -72,7 +78,7 @@ export default {
       };
     },
     baseUrl() {
-      return 'http://localhost:3000';
+      return 'http://localhost:3000/';
     },
     uploadType() {
       return this.uploadArguments.type;
