@@ -48,21 +48,23 @@ export default {
       excel: [
         'application/vnd.ms-excel',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      ]
+      ],
+      zip: ['application/zip']
     },
     acceptDesc: {
       video: 'mp4',
       image: 'png,gif,jpeg,jpg,bmp',
       audio: 'mp3',
       ppt: 'ppt',
-      excel: 'xls,xlsx'
+      excel: 'xls,xlsx',
+      zip: 'zip'
     },
     // 临时自测使用
     uploadArguments: {
-      type: 'video'
+      type: 'zip'
     },
     limit: 20,
-    chunkSize: 50 * 1024 * 1024,
+    chunkSize: 1 * 1024 * 1024,
     share: 1 // 是否共享 0私有  1共享
   }),
   computed: {
@@ -123,16 +125,15 @@ export default {
       this.$refs.upload.clearFiles();
     },
     success() {
-      // this.$message('上传成功');
+      this.$message.success('上传成功');
     },
     // 属性限制
     async propertyRestrictions(file) {
       return new Promise(async (resolve, reject) => {
         if (this.uploadType === 'image') {
           const isVerifyResolution = await this.verifyResolution(file);
-          console.log('propertyRestrictions -> isVerifyResolution', isVerifyResolution);
           if (!isVerifyResolution) {
-            this.$message(this.$t('messageTips.notAbove4k'));
+            this.$message('不支持上传4K视频');
             reject();
           }
         }

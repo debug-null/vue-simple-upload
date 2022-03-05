@@ -1,5 +1,6 @@
 # Upload - 断点续传组件
 
+![image](https://raw.githubusercontent.com/debug-null/vue-simple-upload/master/imgage/eg.png)
 ## 环境要求
 Node版本： v12
 
