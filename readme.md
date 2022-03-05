@@ -1,5 +1,8 @@
 # Upload - 断点续传组件
 
+## 环境要求
+Node版本： v12
+
 ## 启动
 
 * npm run start
